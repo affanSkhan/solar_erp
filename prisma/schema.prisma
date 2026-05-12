@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  ENGINEER
+  SALES
+}
+
+enum ProjectStatus {
+  CREATED
+  DOCUMENTS_GENERATED
+  SUBMITTED
+  VERIFICATION_PENDING
+  METER_INSTALLATION_PENDING
+  APPROVED
+  COMPLETED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(STAFF)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  projects  Project[]
+}
+
+model Customer {
+  id             String    @id @default(uuid())
+  name           String
+  consumerNumber String    @unique
+  address        String
+  mobile         String
+  email          String?
+  aadhaarNumber  String?
+  
+  projects       Project[]
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Project {
+  id                 String        @id @default(uuid())
+  customerId         String
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  
+  userId             String
+  user               User          @relation(fields: [userId], references: [id])
+
+  status             ProjectStatus @default(CREATED)
+  
+  // Project Details
+  projectCapacity    Float
+  sanctionedCapacity Float
+  installationDate   DateTime?
+  applicationNumber  String?
+  applicationDate    DateTime?
+  
+  // Vendor Details
+  vendorName         String
+  vendorAddress      String
+  vendorPhone        String
+  vendorEmail        String
+  vendorGstin        String
+  
+  // Solar Info
+  moduleMake         String
+  moduleModel        String
+  moduleWattage      Int
+  moduleQuantity     Int
+  moduleTotalCapacity Float
+  
+  // Inverter Info
+  inverterMake       String
+  inverterModel      String
+  inverterCapacity   Float
+
+  documents          Document[]
+  logs               AuditLog[]
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  
+  type         String   // e.g. "ANNEXURE_I", "MODEL_AGREEMENT"
+  pathPdf      String?  
+  pathDocx     String
+  
+  generatedAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  action      String
+  performedBy String
+  createdAt   DateTime @default(now())
+}

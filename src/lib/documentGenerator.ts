@@ -1,0 +1,202 @@
+import fs from 'fs';
+import path from 'path';
+import PizZip from 'pizzip';
+import Docxtemplater from 'docxtemplater';
+// In a full environment, you would use libreoffice or unoconv to handle PDF conversion.
+// e.g. import { execSync } from 'child_process';
+
+export type DocumentContext = Record<string, string>;
+
+export const TEMPLATE_FILES = [
+  'ANNEXURE_I_template.docx',
+  'MODEL_AG_template.docx',
+  'Net_Metering_Agreement_template.docx',
+  'DCR_DECLARATION_template.docx',
+  'Islanding_Certificate_template.docx',
+  'WCR_ISLANDING_template.docx'
+] as const;
+
+const KNOWN_PLACEHOLDERS = [
+  // Customer
+  'customer_name',
+  'consumer_number',
+  'customer_address',
+  'mobile_number',
+  'email',
+  'aadhaar_number',
+  // Project
+  'project_capacity',
+  'project_capacity_display',
+  'sanctioned_capacity',
+  'sanctioned_capacity_display',
+  'installation_date',
+  'application_number',
+  'application_date',
+  'project_model',
+  're_arrangement_type',
+  // Vendor
+  'vendor_name',
+  'vendor_address',
+  'vendor_phone',
+  'vendor_email',
+  'vendor_gstin',
+  'vendor_owner',
+  // Solar
+  'module_make',
+  'module_model',
+  'module_wattage',
+  'module_wattage_display',
+  'module_quantity',
+  'module_total_capacity',
+  'module_total_capacity_display',
+  'module_efficiency',
+  'module_efficiency_display',
+  'module_serial_numbers',
+  // Inverter
+  'inverter_make',
+  'inverter_model',
+  'inverter_capacity',
+  'inverter_capacity_display',
+  'inverter_phase',
+  'grid_voltage',
+  'grid_voltage_display',
+  'inverter_ip_rating',
+  'manufacturing_year',
+  // Technical
+  'earthing_count',
+  'earth_resistance',
+  'earthing_display',
+  'power_output_before',
+  'power_output_before_display',
+  'power_output_after',
+  'power_output_after_display',
+  'grid_side_voltage',
+  'grid_side_voltage_display',
+  'inverter_side_voltage',
+  'inverter_side_voltage_display',
+  // Agreement
+  'agreement_date',
+  'agreement_cost',
+  'agreement_cost_display',
+  'maintenance_years',
+  'performance_ratio',
+  // Extra placeholders present in templates
+  'licensee_name',
+  'location',
+  'registration_fees',
+  'observation_date',
+  'discom_name',
+  're_source'
+] as const;
+
+function fillMissingContext(context: DocumentContext): DocumentContext {
+  const normalized: DocumentContext = {};
+
+  for (const [key, value] of Object.entries(context)) {
+    normalized[key] = value == null ? '' : String(value);
+  }
+
+  for (const key of KNOWN_PLACEHOLDERS) {
+    if (!(key in normalized)) {
+      normalized[key] = '';
+    }
+  }
+
+  return normalized;
+}
+
+export interface GenerateDocumentsResult {
+  generatedFiles: string[];
+  failedTemplates: Array<{ template: string; error: string }>;
+}
+
+export async function generateProjectDocuments(
+  context: DocumentContext, 
+  templatesDir: string, 
+  outputDir: string
+): Promise<GenerateDocumentsResult> {
+  const generatedFiles: string[] = [];
+  const failedTemplates: Array<{ template: string; error: string }> = [];
+  const safeContext = fillMissingContext(context);
+  
+  // Create output dir specific to this customer/project
+  const projectFolder = path.join(
+    outputDir,
+    `${safeContext.consumer_number}_${safeContext.customer_name.replace(/\s+/g, '_')}`
+  );
+  if (!fs.existsSync(projectFolder)) {
+    fs.mkdirSync(projectFolder, { recursive: true });
+  }
+
+  for (const templateName of TEMPLATE_FILES) {
+    const templatePath = path.join(templatesDir, templateName);
+    
+    if (!fs.existsSync(templatePath)) {
+      console.warn(`Template missing: ${templatePath}`);
+      failedTemplates.push({
+        template: templateName,
+        error: 'Template file not found'
+      });
+      continue;
+    }
+
+    try {
+      const content = fs.readFileSync(templatePath, 'binary');
+      const zip = new PizZip(content);
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: '{{', end: '}}' },
+        nullGetter() {
+          return '';
+        }
+      });
+
+      doc.render(safeContext);
+
+      const buf = doc.getZip().generate({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+      });
+
+      // Save DOCX
+      const outputFileName = templateName.replace(
+        '_template',
+        `_${safeContext.customer_name.replace(/\s+/g, '_')}`
+      );
+      const outputPath = path.join(projectFolder, outputFileName);
+      fs.writeFileSync(outputPath, buf);
+      generatedFiles.push(outputPath);
+
+      // PDF Conversion (Requires LibreOffice installed on the server)
+      // convertToPdf(outputPath, projectFolder);
+
+    } catch (error: any) {
+      const message = error?.message || 'Unknown generation error';
+      failedTemplates.push({
+        template: templateName,
+        error: message
+      });
+      console.error(`Error generating document ${templateName}:`, error);
+    }
+  }
+
+  return {
+    generatedFiles,
+    failedTemplates
+  };
+}
+
+/**
+ * Converts DOCX to PDF using LibreOffice headless mode.
+ * Note: LibreOffice must be installed on your backend/docker container.
+ */
+export function convertToPdf(inputPath: string, outputDir: string) {
+    const { execSync } = require('child_process');
+    try {
+        console.log(`Converting ${inputPath} to PDF...`);
+        execSync(`soffice --headless --convert-to pdf --outdir "${outputDir}" "${inputPath}"`);
+    } catch (e) {
+        console.error("PDF conversion failed. Is LibreOffice installed?", e);
+    }
+}
