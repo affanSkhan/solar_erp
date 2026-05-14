@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     for (const doc of docs) {
       jszip.file(doc.name, doc.buffer);
     }
-    const zipBuffer = await jszip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+    const zipBuffer = await jszip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
 
     // 6. Save document records to DB
     for (const doc of docs) {
