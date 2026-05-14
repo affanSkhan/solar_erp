@@ -27,8 +27,8 @@ export default function RootLayout({
                 </div>
                 <nav className="flex space-x-4">
                   <a href="/" className="hover:bg-blue-800 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                  <a href="/projects/new" className="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded-md text-sm font-medium">New Project</a>
                   <a href="/customers" className="hover:bg-blue-800 px-3 py-2 rounded-md text-sm font-medium">Customers</a>
+                  <a href="/projects/new" className="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded-md text-sm font-medium">+ New Project</a>
                 </nav>
               </div>
             </div>

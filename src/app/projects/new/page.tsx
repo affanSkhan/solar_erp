@@ -15,23 +15,28 @@ export default function NewProjectPage() {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      const res = await fetch('/api/documents/generate', {
+      const res = await fetch('/api/documents/generate-zip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      const result = await res.json();
-      
-      if (result.success) {
-        if (result.failedTemplates?.length) {
-          const failedNames = result.failedTemplates.map((f: any) => f.template).join(', ');
-          setMessage(`Generated with warnings. Failed templates: ${failedNames}`);
-        } else {
-          setMessage('Documents successfully generated!');
-        }
-        // router.push(`/projects/${result.project.id}`);
+      if (res.ok && res.headers.get('Content-Type')?.includes('zip')) {
+        // Trigger ZIP download
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="([^"]+)"/);
+        a.download = match ? match[1] : 'solar_documents.zip';
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setMessage('✅ Documents generated! Your ZIP download has started.');
       } else {
+        const result = await res.json();
         setMessage(`Error: ${result.error}`);
       }
     } catch (err: any) {
@@ -41,10 +46,11 @@ export default function NewProjectPage() {
     }
   };
 
+
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Solar Project & Generate Docs</h1>
-      
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Solar Project &amp; Generate Docs</h1>
+
       {message && (
         <div className={`p-4 mb-6 rounded-md ${message.includes('Error') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
           {message}
@@ -52,7 +58,7 @@ export default function NewProjectPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-        
+
         {/* Customer Section */}
         <div>
           <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Customer Details</h2>
@@ -75,7 +81,7 @@ export default function NewProjectPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input name="email" type="email" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="paradiseenergies@gmail.com" />
+              <input name="email" type="email" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="customer@email.com" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Aadhaar Number</label>
@@ -84,9 +90,9 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        {/* Project Section */}
+        {/* Project & Solar Section */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Project & Solar Details</h2>
+          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Project &amp; Solar Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Project Capacity (KW)</label>
@@ -129,6 +135,10 @@ export default function NewProjectPage() {
               <input required name="module_total_capacity" type="number" step="0.01" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="4.06" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">Module Efficiency (%)</label>
+              <input name="module_efficiency" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="22" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">Inverter Make</label>
               <input required name="inverter_make" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="WAAREE" />
             </div>
@@ -140,10 +150,6 @@ export default function NewProjectPage() {
               <label className="block text-sm font-medium text-gray-700">Inverter Capacity (KW)</label>
               <input required name="inverter_capacity" type="number" step="0.1" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="5" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Module Efficiency (%)</label>
-              <input name="module_efficiency" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="22" />
-            </div>
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-gray-700">Module Serial Numbers</label>
               <textarea name="module_serial_numbers" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="WS10259055293664, WS10259055293360, ..." rows={2} />
@@ -151,72 +157,29 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        {/* Vendor Section */}
+        {/* Technical Section */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Vendor Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor Name</label>
-              <input name="vendor_name" type="text" defaultValue="PARADISE ENERGIES" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor Owner</label>
-              <input name="vendor_owner" type="text" placeholder="Authorized Signatory" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Vendor Address</label>
-              <input name="vendor_address" type="text" defaultValue="IN FRONT OF TAHESIL OFFICE, BARSHITAKLI Dist - AKOLA, Pin Code 444401" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor Phone</label>
-              <input name="vendor_phone" type="text" defaultValue="7767037077" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor Email</label>
-              <input name="vendor_email" type="email" defaultValue="paradiseenergies@gmail.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor GSTIN</label>
-              <input name="vendor_gstin" type="text" defaultValue="27CLEPS3644D2Z1" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-          </div>
-        </div>
-
-        {/* Technical/Regulatory Section */}
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Technical & Regulatory</h2>
+          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Technical Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Inverter Phase</label>
-              <input name="inverter_phase" type="text" defaultValue="1ph" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Grid Voltage</label>
-              <input name="grid_voltage" type="text" defaultValue="230-240" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Inverter IP Rating</label>
-              <input name="inverter_ip_rating" type="text" defaultValue="IP65" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700">Manufacturing Year</label>
-              <input name="manufacturing_year" type="text" placeholder="2026" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="manufacturing_year" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="2026" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Earthing Count</label>
-              <input name="earthing_count" type="text" placeholder="3" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="earthing_count" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="3" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Earth Resistance</label>
-              <input name="earth_resistance" type="text" placeholder="0.8 Ohm" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="earth_resistance" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="0.8 Ohm" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Power Output Before</label>
-              <input name="power_output_before" type="text" placeholder="1605 watts" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="power_output_before" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="1605 watts" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Power Output After</label>
-              <input name="power_output_after" type="text" placeholder="000 watts" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="power_output_after" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="000 watts" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Observation Date</label>
@@ -224,62 +187,26 @@ export default function NewProjectPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Grid Side Voltage</label>
-              <input name="grid_side_voltage" type="text" placeholder="245" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="grid_side_voltage" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="245" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Inverter Side Voltage</label>
-              <input name="inverter_side_voltage" type="text" placeholder="00" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Registration Fees</label>
-              <input name="registration_fees" type="text" defaultValue="590" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <input name="inverter_side_voltage" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="00" />
             </div>
           </div>
         </div>
 
-        {/* Agreement & Utility Section */}
+        {/* Agreement Section */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Agreement & Utility Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">Agreement Details</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Agreement Date</label>
               <input name="agreement_date" type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Agreement Cost</label>
-              <input name="agreement_cost" type="text" placeholder="250000" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Maintenance Years</label>
-              <input name="maintenance_years" type="text" defaultValue="5 years" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Performance Ratio</label>
-              <input name="performance_ratio" type="text" defaultValue="75%" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">DISCOM Name</label>
-              <input name="discom_name" type="text" defaultValue="MSEDCL" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Licensee Name</label>
-              <input name="licensee_name" type="text" defaultValue="MSEDCL, AKOLA U-III S/DN AKOLA" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Location</label>
-              <input name="location" type="text" defaultValue="AKOLA U-I S/DN" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Project Model</label>
-              <input name="project_model" type="text" defaultValue="Capex" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">RE Arrangement Type</label>
-              <input name="re_arrangement_type" type="text" defaultValue="Net Metering Arrangement" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">RE Source</label>
-              <input name="re_source" type="text" defaultValue="Solar" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" />
+              <label className="block text-sm font-medium text-gray-700">Agreement Cost (Rs.)</label>
+              <input name="agreement_cost" type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" placeholder="250000" />
             </div>
           </div>
         </div>

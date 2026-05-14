@@ -110,6 +110,77 @@ export interface GenerateDocumentsResult {
   failedTemplates: Array<{ template: string; error: string }>;
 }
 
+export interface InMemoryDoc {
+  name: string;
+  buffer: Buffer;
+}
+
+export interface InMemoryResult {
+  docs: InMemoryDoc[];
+  failedTemplates: Array<{ template: string; error: string }>;
+}
+
+/** Generates all documents in memory — no filesystem writes. Works on Vercel/serverless. */
+export async function generateProjectDocumentsInMemory(
+  context: DocumentContext,
+  templatesDir: string
+): Promise<InMemoryResult> {
+  const docs: InMemoryDoc[] = [];
+  const failedTemplates: Array<{ template: string; error: string }> = [];
+  const safeContext = fillMissingContext(context);
+
+  for (const templateName of TEMPLATE_FILES) {
+    const templatePath = path.join(templatesDir, templateName);
+
+    if (!fs.existsSync(templatePath)) {
+      failedTemplates.push({ template: templateName, error: 'Template file not found' });
+      continue;
+    }
+
+    try {
+      const content = fs.readFileSync(templatePath, 'binary');
+      const zip = new PizZip(content);
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: '{{', end: '}}' },
+        nullGetter() { return ''; },
+      });
+
+      doc.render(safeContext);
+
+      // Fallback: replace any remaining {{placeholders}} docxtemplater missed
+      const renderedZip = doc.getZip();
+      for (const xmlFileName of Object.keys(renderedZip.files)) {
+        if (!xmlFileName.endsWith('.xml') && !xmlFileName.endsWith('.rels')) continue;
+        const file = renderedZip.files[xmlFileName];
+        if (file.dir) continue;
+        let xmlContent: string = file.asText();
+        let replaced = false;
+        for (const [key, value] of Object.entries(safeContext)) {
+          const tag = `{{${key}}}`;
+          if (xmlContent.includes(tag)) {
+            const safeValue = String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            while (xmlContent.includes(tag)) { xmlContent = xmlContent.replace(tag, safeValue); replaced = true; }
+          }
+        }
+        if (replaced) renderedZip.file(xmlFileName, xmlContent);
+      }
+
+      const buf = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+      const outputFileName = templateName.replace(
+        '_template',
+        `_${safeContext.customer_name.replace(/\s+/g, '_')}`
+      );
+      docs.push({ name: outputFileName, buffer: buf });
+    } catch (error: any) {
+      failedTemplates.push({ template: templateName, error: error?.message || 'Unknown error' });
+    }
+  }
+
+  return { docs, failedTemplates };
+}
+
 export async function generateProjectDocuments(
   context: DocumentContext, 
   templatesDir: string, 
@@ -154,7 +225,35 @@ export async function generateProjectDocuments(
 
       doc.render(safeContext);
 
-      const buf = doc.getZip().generate({
+      // --- Fallback: raw XML string-replace for any {{placeholder}} that
+      // docxtemplater silently skipped (e.g. due to complex XML structure).
+      const renderedZip = doc.getZip();
+      for (const xmlFileName of Object.keys(renderedZip.files)) {
+        if (!xmlFileName.endsWith('.xml') && !xmlFileName.endsWith('.rels')) continue;
+        const file = renderedZip.files[xmlFileName];
+        if (file.dir) continue;
+        let xmlContent: string = file.asText();
+        let replaced = false;
+        for (const [key, value] of Object.entries(safeContext)) {
+          const tag = `{{${key}}}`;
+          if (xmlContent.includes(tag)) {
+            // Escape special XML chars in replacement value
+            const safeValue = String(value)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;');
+            while (xmlContent.includes(tag)) {
+              xmlContent = xmlContent.replace(tag, safeValue);
+              replaced = true;
+            }
+          }
+        }
+        if (replaced) {
+          renderedZip.file(xmlFileName, xmlContent);
+        }
+      }
+
+      const buf = renderedZip.generate({
         type: 'nodebuffer',
         compression: 'DEFLATE',
       });
