@@ -88,13 +88,14 @@ function StatusTimeline({ currentStatus }: { currentStatus: ProjectStatus }) {
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   let project: any = null;
 
   try {
     project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true,
         documents: { orderBy: { generatedAt: 'asc' } },
