@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { PrismaClient, ProjectStatus } from '@prisma/client';
 import { AdvanceStatusButton } from './AdvanceStatusButton';
-
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -91,11 +92,18 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    redirect('/login');
+  }
+  const userId = (session.user as any).id;
+
   let project: any = null;
 
   try {
     project = await prisma.project.findUnique({
-      where: { id },
+      where: { id, userId },
       include: {
         customer: true,
         documents: { orderBy: { generatedAt: 'asc' } },
@@ -104,7 +112,7 @@ export default async function ProjectDetailPage({
       },
     });
   } catch (e) {
-    // DB error – fall through to notFound
+    // DB error
   }
 
   if (!project) return notFound();

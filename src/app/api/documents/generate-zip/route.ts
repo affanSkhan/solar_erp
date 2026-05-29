@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import JSZip from 'jszip';
 import path from 'path';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { generateProjectDocumentsInMemory, TEMPLATE_FILES } from '@/lib/documentGenerator';
 import { validatePayload, buildDocumentContext, parseDateInput, DEFAULTS } from '@/lib/routeHelpers';
 
@@ -9,6 +11,12 @@ const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = (session.user as any).id;
+
     const data = (await req.json()) as Record<string, unknown>;
 
     const missing = validatePayload(data);
@@ -19,7 +27,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch user and profile
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { vendorProfile: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
     const docContext = buildDocumentContext(data);
+
+    // Override with VendorProfile if it exists
+    if (user.vendorProfile) {
+      docContext.vendor_name = user.vendorProfile.companyName;
+      docContext.vendor_address = user.vendorProfile.address;
+      docContext.vendor_phone = user.vendorProfile.phone;
+      docContext.vendor_email = user.vendorProfile.email;
+      docContext.vendor_gstin = user.vendorProfile.gstin;
+      docContext.vendor_owner = user.vendorProfile.ownerName;
+    }
 
     // 1. Upsert Customer
     const customer = await prisma.customer.upsert({
@@ -40,14 +68,6 @@ export async function POST(req: NextRequest) {
         aadhaarNumber: docContext.aadhaar_number || null,
       },
     });
-
-    // 2. Find or create admin user
-    let user = await prisma.user.findFirst();
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email: 'admin@solarerp.com', password: 'admin', name: 'System Admin', role: 'ADMIN' },
-      });
-    }
 
     // 3. Create Project
     const project = await prisma.project.create({

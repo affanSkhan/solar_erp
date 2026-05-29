@@ -1,17 +1,25 @@
 import Link from 'next/link';
 import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
 export default async function CustomersPage() {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
+
   let customers: any[] = [];
   let dbUnavailable = false;
 
   try {
-    customers = await prisma.customer.findMany({
-      include: { projects: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    if (userId) {
+      customers = await prisma.customer.findMany({
+        where: { projects: { some: { userId } } },
+        include: { projects: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
   } catch {
     dbUnavailable = true;
   }

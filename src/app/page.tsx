@@ -1,9 +1,14 @@
 import Link from 'next/link';
 import { Prisma, PrismaClient, ProjectStatus } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
 export default async function Dashboard() {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
+
   let totalProjects = 0;
   let pendingApprovals = 0;
   let generatedDocs = 0;
@@ -13,28 +18,34 @@ export default async function Dashboard() {
   let dbUnavailable = false;
 
   try {
-    totalProjects = await prisma.project.count();
-    pendingApprovals = await prisma.project.count({
-      where: {
-        status: {
-          notIn: [
-            ProjectStatus.COMPLETED,
-            ProjectStatus.DOCUMENTS_GENERATED,
-            ProjectStatus.CREATED,
-          ],
+    if (userId) {
+      totalProjects = await prisma.project.count({ where: { userId } });
+      pendingApprovals = await prisma.project.count({
+        where: {
+          userId,
+          status: {
+            notIn: [
+              ProjectStatus.COMPLETED,
+              ProjectStatus.DOCUMENTS_GENERATED,
+              ProjectStatus.CREATED,
+            ],
+          },
         },
-      },
-    });
-    generatedDocs = await prisma.document.count();
+      });
+      generatedDocs = await prisma.document.count({
+        where: { project: { userId } },
+      });
 
-    recentProjects = await prisma.project.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      include: {
-        customer: true,
-        documents: true,
-      },
-    });
+      recentProjects = await prisma.project.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          customer: true,
+          documents: true,
+        },
+      });
+    }
   } catch (error) {
     dbUnavailable = true;
     console.error('Failed to load dashboard data from database:', error);
