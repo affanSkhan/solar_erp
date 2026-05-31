@@ -28,6 +28,11 @@ export async function updateVendorProfile(formData: FormData) {
       phone: formData.get('phone') as string,
       gstin: formData.get('gstin') as string,
       address: formData.get('address') as string,
+      // DISCOM / Licensee (city-specific, optional)
+      discomName:      (formData.get('discomName') as string)      || null,
+      discomAddress:   (formData.get('discomAddress') as string)   || null,
+      licenseeName:    (formData.get('licenseeName') as string)    || null,
+      licenseeAddress: (formData.get('licenseeAddress') as string) || null,
     };
 
     await prisma.vendorProfile.upsert({

@@ -1,15 +1,17 @@
 import type { DocumentContext } from './documentGenerator';
 
 export const DEFAULTS = {
-  vendorName: 'PARADISE ENERGIES',
-  vendorAddress: 'IN FRONT OF TAHESIL OFFICE, BARSHITAKLI Dist - AKOLA, Pin Code 444401',
+  vendorName: 'IMPRESS SOLAR POINT',
+  vendorAddress: 'Building No. 454, Qasadpura, Daryapur Banosa, Dist- Amravati , Pin Code. 444803',
   vendorPhone: '+917744819280',
   vendorEmail: 'munavvarhussain445@gmail.com',
-  vendorGstin: '27CLEPS3644D2Z1',
-  vendorOwner: 'Authorized Signatory',
+  vendorGstin: '27AUEPH3173P1Z8',
+  vendorOwner: 'MUNAVVAR HUSSAIN MUZAFFAR HUSSAIN',
   discomName: 'MSEDCL',
-  licenseeName: 'MSEDCL, AKOLA U-III S/DN AKOLA',
-  location: 'AKOLA U-I S/DN',
+  discomAddress: 'MSEDCL Subdivision Daryapur',
+  licenseeName: 'MSEDCL, Daryapur U-III S/DN Daryapur',
+  licenseeAddress: 'Daryapur U-I S/DN',
+  location: 'Daryapur U-I S/DN',
   reArrangementType: 'Net Metering Arrangement',
   reSource: 'Solar',
   projectModel: 'Capex',
@@ -169,8 +171,10 @@ export function buildDocumentContext(data: Record<string, unknown>): DocumentCon
     performance_ratio: text(data.performance_ratio, DEFAULTS.performanceRatio),
 
     discom_name: text(data.discom_name, DEFAULTS.discomName),
+    discom_address: text(data.discom_address, DEFAULTS.discomAddress),
     location: text(data.location, DEFAULTS.location),
     licensee_name: text(data.licensee_name, DEFAULTS.licenseeName),
+    licensee_address: text(data.licensee_address, DEFAULTS.licenseeAddress),
     registration_fees: text(data.registration_fees, DEFAULTS.registrationFees),
     observation_date: observationDate,
   };

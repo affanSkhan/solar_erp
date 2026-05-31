@@ -41,12 +41,21 @@ export async function POST(req: NextRequest) {
 
     // Override with VendorProfile if it exists
     if (user.vendorProfile) {
-      docContext.vendor_name = user.vendorProfile.companyName;
-      docContext.vendor_address = user.vendorProfile.address;
-      docContext.vendor_phone = user.vendorProfile.phone;
-      docContext.vendor_email = user.vendorProfile.email;
-      docContext.vendor_gstin = user.vendorProfile.gstin;
-      docContext.vendor_owner = user.vendorProfile.ownerName;
+      const vp = user.vendorProfile;
+      docContext.vendor_name    = vp.companyName;
+      docContext.vendor_address = vp.address;
+      docContext.vendor_phone   = vp.phone;
+      docContext.vendor_email   = vp.email;
+      docContext.vendor_gstin   = vp.gstin;
+      docContext.vendor_owner   = vp.ownerName;
+      // DISCOM / Licensee fields (city-specific) — only override if set
+      if (vp.discomName)      docContext.discom_name      = vp.discomName;
+      if (vp.discomAddress)   docContext.discom_address   = vp.discomAddress;
+      if (vp.licenseeName)    docContext.licensee_name    = vp.licenseeName;
+      if (vp.licenseeAddress) {
+        docContext.licensee_address = vp.licenseeAddress;
+        docContext.location         = vp.licenseeAddress; // Maps to {{location}} in Net_Metering_Agreement
+      }
     }
 
     // 1. Upsert Customer

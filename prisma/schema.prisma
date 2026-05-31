@@ -49,6 +49,12 @@ model VendorProfile {
   email         String
   gstin         String
 
+  // DISCOM / Licensee details (varies by city)
+  discomName        String?  // e.g. MSEDCL
+  discomAddress     String?  // e.g. MSEDCL Subdivision Akola
+  licenseeName      String?  // e.g. MSEDCL, AKOLA U-III S/DN AKOLA
+  licenseeAddress   String?  // e.g. AKOLA U-I S/DN
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

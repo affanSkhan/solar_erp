@@ -18,14 +18,16 @@ export default async function SettingsPage() {
   });
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Vendor Settings</h1>
-      <p className="text-gray-500 mb-6">
-        Update your company details here. These details will be automatically injected into your generated documents. 
-        If you leave this blank, the system will use the default Impress Solar Point details.
-      </p>
+    <div className="max-w-3xl mx-auto py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Vendor Settings</h1>
+        <p className="text-slate-500 mt-2 font-medium">
+          Update your company details here. These details will be automatically injected into your generated documents. 
+          If you leave this blank, the system will use the default Impress Solar Point details.
+        </p>
+      </div>
       
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-slate-200/50 p-8">
         <SettingsForm initialData={vendorProfile} userId={userId} />
       </div>
     </div>

@@ -86,6 +86,8 @@ const KNOWN_PLACEHOLDERS = [
   'registration_fees',
   'observation_date',
   'discom_name',
+  'discom_address',
+  'licensee_address',
   're_source'
 ] as const;
 
@@ -157,6 +159,8 @@ export async function generateProjectDocumentsInMemory(
         if (file.dir) continue;
         let xmlContent: string = file.asText();
         let replaced = false;
+
+        // 1. Replace {{placeholders}}
         for (const [key, value] of Object.entries(safeContext)) {
           const tag = `{{${key}}}`;
           if (xmlContent.includes(tag)) {
@@ -164,7 +168,71 @@ export async function generateProjectDocumentsInMemory(
             while (xmlContent.includes(tag)) { xmlContent = xmlContent.replace(tag, safeValue); replaced = true; }
           }
         }
+
+        // 2. Replace Legacy Hardcoded text with Vendor Profile details
+        const legacyMappings = [
+          { old: 'IMPRESS SOLAR POINT', new: safeContext.vendor_name },
+          { old: 'Impress Solar Point', new: safeContext.vendor_name },
+          { old: 'PARADISE ENERGIES', new: safeContext.vendor_name },
+          { old: '+917744819280', new: safeContext.vendor_phone },
+          { old: 'munavvarhussain445@gmail.com', new: safeContext.vendor_email },
+          // Two different GSTINs found in templates — both map to vendor_gstin
+          { old: '27CLEPS3644D2Z1', new: safeContext.vendor_gstin },
+          { old: '27AUEPH3173P1Z8', new: safeContext.vendor_gstin },
+          // Vendor addresses — some are split across XML runs so we match each run part
+          // Legacy address (single XML run)
+          { old: 'IN FRONT OF TAHESIL OFFICE, BARSHITAKLI Dist - AKOLA, Pin Code 444401', new: safeContext.vendor_address },
+          // Islanding Certificate: address is split across two XML runs
+          { old: 'Building No. 454, Qasadpura, Daryapur Banosa', new: safeContext.vendor_address },
+          { old: 'Dist - AKOLA , Pin Code . 44 4401', new: '' },
+          // MODEL_AG full address (single XML run)
+          { old: 'Building No. 454, Qasadpura, Near New Fashion Tailor, Daryapur Banosa, Dist. Amravati, Maharashtra - 444803', new: safeContext.vendor_address },
+          // Owner / signatory
+          { old: 'Authorized Signatory', new: safeContext.vendor_owner },
+          { old: 'MUNAVVER HUSAIN MUZAFFAR HUSAIN', new: safeContext.vendor_owner },
+          // WCR_ISLANDING has a 3rd IMPRESS occurrence split across two XML runs:
+          // run1: " IMPRESS" (leading space), run2: " SOLAR POINT" (leading space)
+          { old: ' IMPRESS', new: ` ${safeContext.vendor_name}` },
+          { old: ' SOLAR POINT', new: '' },
+          // DISCOM subdivision (city-specific)
+          { old: 'MSEDCL Subdivision Akola', new: safeContext.discom_address || 'MSEDCL Subdivision Akola' },
+        ];
+
+        for (const mapping of legacyMappings) {
+          if (xmlContent.includes(mapping.old)) {
+            const safeValue = String(mapping.new ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            xmlContent = xmlContent.split(mapping.old).join(safeValue);
+            replaced = true;
+          }
+        }
+
+        // Remove hardcoded Aadhaar photo from WCR_ISLANDING (rId8 / ADHAR_ASHFAQ image)
+        // Replace the <w:pict> VML image element with a placeholder text paragraph
+        if (xmlFileName.endsWith('document.xml') && xmlContent.includes('ADHAR_ASHFAQ')) {
+          const pictRegex = /<w:pict(?:(?!<w:pict>).)*ADHAR_ASHFAQ.*?<\/w:pict>/;
+          const placeholder = `<w:t>[Aadhaar Card Copy — Attach Here]</w:t>`;
+          if (pictRegex.test(xmlContent)) {
+            xmlContent = xmlContent.replace(pictRegex, placeholder);
+            replaced = true;
+          }
+        }
+
         if (replaced) renderedZip.file(xmlFileName, xmlContent);
+      }
+
+      // Remove the Aadhaar image file from WCR_ISLANDING zip
+      if (templateName === 'WCR_ISLANDING_template.docx') {
+        // Remove image binary
+        if (renderedZip.files['word/media/image1.jpeg']) {
+          delete renderedZip.files['word/media/image1.jpeg'];
+        }
+        // Remove rId8 from relationships
+        const relsKey = Object.keys(renderedZip.files).find(f => f.replace(/\\/g, '/') === 'word/_rels/document.xml.rels');
+        if (relsKey) {
+          let relsXml = renderedZip.files[relsKey].asText();
+          relsXml = relsXml.replace(/<Relationship[^>]*Id="rId8"[^>]*\/>/, '');
+          renderedZip.file(relsKey, relsXml);
+        }
       }
 
       const buf = renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
@@ -234,6 +302,8 @@ export async function generateProjectDocuments(
         if (file.dir) continue;
         let xmlContent: string = file.asText();
         let replaced = false;
+
+        // 1. Replace {{placeholders}}
         for (const [key, value] of Object.entries(safeContext)) {
           const tag = `{{${key}}}`;
           if (xmlContent.includes(tag)) {
@@ -248,8 +318,70 @@ export async function generateProjectDocuments(
             }
           }
         }
+
+        // 2. Replace Legacy Hardcoded text with Vendor Profile details
+        const legacyMappings = [
+          { old: 'IMPRESS SOLAR POINT', new: safeContext.vendor_name },
+          { old: 'Impress Solar Point', new: safeContext.vendor_name },
+          { old: 'PARADISE ENERGIES', new: safeContext.vendor_name },
+          { old: '+917744819280', new: safeContext.vendor_phone },
+          { old: 'munavvarhussain445@gmail.com', new: safeContext.vendor_email },
+          // Two different GSTINs found in templates — both map to vendor_gstin
+          { old: '27CLEPS3644D2Z1', new: safeContext.vendor_gstin },
+          { old: '27AUEPH3173P1Z8', new: safeContext.vendor_gstin },
+          // Vendor addresses — some are split across XML runs so we match each run part
+          // Legacy address (single XML run)
+          { old: 'IN FRONT OF TAHESIL OFFICE, BARSHITAKLI Dist - AKOLA, Pin Code 444401', new: safeContext.vendor_address },
+          // Islanding Certificate: address is split across two XML runs
+          { old: 'Building No. 454, Qasadpura, Daryapur Banosa', new: safeContext.vendor_address },
+          { old: 'Dist - AKOLA , Pin Code . 44 4401', new: '' },
+          // MODEL_AG full address (single XML run)
+          { old: 'Building No. 454, Qasadpura, Near New Fashion Tailor, Daryapur Banosa, Dist. Amravati, Maharashtra - 444803', new: safeContext.vendor_address },
+          // Owner / signatory
+          { old: 'Authorized Signatory', new: safeContext.vendor_owner },
+          { old: 'MUNAVVER HUSAIN MUZAFFAR HUSAIN', new: safeContext.vendor_owner },
+          // WCR_ISLANDING has a 3rd IMPRESS occurrence split across two XML runs:
+          // run1: " IMPRESS" (leading space), run2: " SOLAR POINT" (leading space)
+          { old: ' IMPRESS', new: ` ${safeContext.vendor_name}` },
+          { old: ' SOLAR POINT', new: '' },
+          // DISCOM subdivision (city-specific)
+          { old: 'MSEDCL Subdivision Akola', new: safeContext.discom_address || 'MSEDCL Subdivision Akola' },
+        ];
+
+        for (const mapping of legacyMappings) {
+          if (xmlContent.includes(mapping.old)) {
+            const safeValue = String(mapping.new ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            xmlContent = xmlContent.split(mapping.old).join(safeValue);
+            replaced = true;
+          }
+        }
+
+        // Remove hardcoded Aadhaar photo from WCR_ISLANDING (rId8 / ADHAR_ASHFAQ image)
+        // Replace the <w:pict> VML image element with a placeholder text paragraph
+        if (xmlFileName.endsWith('document.xml') && xmlContent.includes('ADHAR_ASHFAQ')) {
+          const pictRegex = /<w:pict(?:(?!<w:pict>).)*ADHAR_ASHFAQ.*?<\/w:pict>/;
+          const placeholder = `<w:t>[Aadhaar Card Copy — Attach Here]</w:t>`;
+          if (pictRegex.test(xmlContent)) {
+            xmlContent = xmlContent.replace(pictRegex, placeholder);
+            replaced = true;
+          }
+        }
+
         if (replaced) {
           renderedZip.file(xmlFileName, xmlContent);
+        }
+      }
+
+      // Remove the Aadhaar image file from WCR_ISLANDING zip
+      if (templateName === 'WCR_ISLANDING_template.docx') {
+        if (renderedZip.files['word/media/image1.jpeg']) {
+          delete renderedZip.files['word/media/image1.jpeg'];
+        }
+        const relsKey = Object.keys(renderedZip.files).find(f => f.replace(/\\/g, '/') === 'word/_rels/document.xml.rels');
+        if (relsKey) {
+          let relsXml = renderedZip.files[relsKey].asText();
+          relsXml = relsXml.replace(/<Relationship[^>]*Id="rId8"[^>]*\/>/, '');
+          renderedZip.file(relsKey, relsXml);
         }
       }
 

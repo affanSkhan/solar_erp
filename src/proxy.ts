@@ -4,6 +4,7 @@ export default withAuth({
   pages: {
     signIn: '/login',
   },
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-super-secret-key-for-local',
 });
 
 export const config = {

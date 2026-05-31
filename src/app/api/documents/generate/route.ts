@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import {
   generateProjectDocuments,
@@ -6,6 +7,8 @@ import {
   TEMPLATE_FILES
 } from '@/lib/documentGenerator';
 import path from 'path';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -216,8 +219,12 @@ function buildDocumentContext(data: Record<string, unknown>): DocumentContext {
   };
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // Resolve authenticated user (if any) to pull their VendorProfile
+    const session = await getServerSession(authOptions);
+    const sessionUserId = (session?.user as any)?.id as string | undefined;
+
     const data = (await req.json()) as Record<string, unknown>;
     const missing = validatePayload(data);
     if (missing.length > 0) {
@@ -231,6 +238,31 @@ export async function POST(req: Request) {
     }
 
     const docContext = buildDocumentContext(data);
+
+    // Override vendor fields with the authenticated user's VendorProfile
+    if (sessionUserId) {
+      const userWithProfile = await prisma.user.findUnique({
+        where: { id: sessionUserId },
+        include: { vendorProfile: true },
+      });
+      if (userWithProfile?.vendorProfile) {
+        const vp = userWithProfile.vendorProfile;
+        docContext.vendor_name    = vp.companyName;
+        docContext.vendor_address = vp.address;
+        docContext.vendor_phone   = vp.phone;
+        docContext.vendor_email   = vp.email;
+        docContext.vendor_gstin   = vp.gstin;
+        docContext.vendor_owner   = vp.ownerName;
+        // DISCOM / Licensee fields (city-specific) — only override if set
+        if (vp.discomName)      docContext.discom_name      = vp.discomName;
+        if (vp.discomAddress)   docContext.discom_address   = vp.discomAddress;
+        if (vp.licenseeName)    docContext.licensee_name    = vp.licenseeName;
+        if (vp.licenseeAddress) {
+          docContext.licensee_address = vp.licenseeAddress;
+          docContext.location         = vp.licenseeAddress; // Maps to {{location}} in Net_Metering_Agreement
+        }
+      }
+    }
 
     // 1. Create or Find Customer
     const customer = await prisma.customer.upsert({
@@ -252,9 +284,13 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2. Mock User ID for now (Normally from NextAuth session)
-    // To make this work without auth immediately, we assume an ADMIN user exists or create a dummy one
-    let user = await prisma.user.findFirst();
+    // 2. Resolve user for DB record — prefer the authenticated session user
+    let user = sessionUserId
+      ? await prisma.user.findUnique({ where: { id: sessionUserId } })
+      : null;
+    if (!user) {
+      user = await prisma.user.findFirst();
+    }
     if (!user) {
       user = await prisma.user.create({
         data: {
