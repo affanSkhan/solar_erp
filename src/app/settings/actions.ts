@@ -21,6 +21,17 @@ export async function updateVendorProfile(formData: FormData) {
       return { success: false, error: 'Invalid user session' };
     }
 
+    const actionType = formData.get('actionType') as string;
+    const isLocking = actionType === 'lock';
+
+    const existingProfile = await prisma.vendorProfile.findUnique({
+      where: { userId }
+    });
+
+    if (existingProfile?.isLocked) {
+      return { success: false, error: 'Your profile is locked. Please contact the administrator to make changes.' };
+    }
+
     const data = {
       companyName: formData.get('companyName') as string,
       ownerName: formData.get('ownerName') as string,
@@ -33,6 +44,7 @@ export async function updateVendorProfile(formData: FormData) {
       discomAddress:   (formData.get('discomAddress') as string)   || null,
       licenseeName:    (formData.get('licenseeName') as string)    || null,
       licenseeAddress: (formData.get('licenseeAddress') as string) || null,
+      isLocked: isLocking
     };
 
     await prisma.vendorProfile.upsert({
