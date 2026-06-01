@@ -13,7 +13,18 @@ export function SettingsForm({ initialData, userId }: { initialData: any, userId
     setMessage('');
 
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement;
-    const actionType = submitter?.value || 'save';
+    const actionType = submitter?.value || 'lock'; // Default to lock since we only have one button now
+
+    if (actionType === 'lock') {
+      const isConfirmed = window.confirm(
+        "⚠️ ARE YOU SURE?\n\nOnce you save, your company details will be PERMANENTLY LOCKED to prevent unauthorized changes.\n\nYou will not be able to edit this profile again without contacting the administrator. Do you wish to proceed?"
+      );
+      
+      if (!isConfirmed) {
+        setLoading(false);
+        return;
+      }
+    }
 
     const formData = new FormData(e.currentTarget);
     formData.append('userId', userId);
