@@ -25,24 +25,23 @@ export default async function RootLayout({
       <body className={`${plusJakarta.className} bg-slate-50 text-slate-900 min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-100 via-slate-50 to-white selection:bg-emerald-200 selection:text-emerald-900`}>
         <div className="min-h-screen flex flex-col relative z-0">
           {/* Top Navbar - Glassmorphic */}
-          <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/60 shadow-sm transition-all duration-300">
+          <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/70 border-b border-slate-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between h-16 items-center">
-                <div className="flex-shrink-0 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <span className="text-white font-bold text-sm">ERP</span>
+                <div className="flex-shrink-0 flex items-center gap-3 group cursor-default">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform duration-300">
+                    <span className="text-white font-black text-xs tracking-widest ml-0.5">ERP</span>
                   </div>
-                  <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600">
-                    SOLAR ERP
+                  <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
+                    SOLAR
                   </span>
                 </div>
                 {session && (
-                  <nav className="flex gap-6 items-center">
-                    <Link href="/" className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200">Dashboard</Link>
-                    <Link href="/customers" className="text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/50 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200">Customers</Link>
-                    <Link href="/projects/new" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200">+ New Project</Link>
-                    <div className="w-px h-5 bg-slate-200"></div>
-                    <Link href="/settings" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200">Settings</Link>
+                  <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '24px', marginLeft: 'auto' }}>
+                    <Link href="/" style={{ textDecoration: 'none', color: '#333', fontSize: '14px', fontWeight: '600' }}>Dashboard</Link>
+                    <Link href="/customers" style={{ textDecoration: 'none', color: '#333', fontSize: '14px', fontWeight: '600' }}>Customers</Link>
+                    <Link href="/settings" style={{ textDecoration: 'none', color: '#333', fontSize: '14px', fontWeight: '600' }}>Settings</Link>
+                    <Link href="/projects/new" style={{ textDecoration: 'none', color: '#333', fontSize: '14px', fontWeight: 'bold' }}>+ New Project</Link>
                     <LogoutButton />
                   </nav>
                 )}
