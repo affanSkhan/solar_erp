@@ -126,25 +126,14 @@ export function SettingsForm({ initialData, userId }: { initialData: any, userId
       </div>
 
       {!isLocked && (
-        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t border-slate-200 mt-8">
-          <button
-            type="submit"
-            name="action"
-            value="save"
-            disabled={loading}
-            className="group relative flex justify-center py-3 px-6 border border-slate-300 text-sm font-bold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            {loading ? 'Saving...' : 'Save Settings'}
-          </button>
-          
+        <div className="flex justify-end pt-4 border-t border-slate-200 mt-8">
           <button
             type="submit"
             name="action"
             value="lock"
             disabled={loading}
-            className="group relative flex justify-center py-3 px-8 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-md shadow-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none gap-2 items-center"
+            className="group relative flex justify-center py-3 px-8 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-md shadow-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
             {loading ? 'Processing...' : 'Save Settings and Lock'}
           </button>
         </div>
