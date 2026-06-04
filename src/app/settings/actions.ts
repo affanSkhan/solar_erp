@@ -22,15 +22,33 @@ export async function updateVendorProfile(formData: FormData) {
     }
 
     const actionType = formData.get('actionType') as string;
-    const isLocking = actionType === 'lock';
 
     const existingProfile = await prisma.vendorProfile.findUnique({
       where: { userId }
     });
 
+    // If profile is locked, only DISCOM fields are allowed to be updated
     if (existingProfile?.isLocked) {
-      return { success: false, error: 'Your profile is locked. Please contact the administrator to make changes.' };
+      if (actionType === 'discom') {
+        // Allow updating DISCOM / Licensee fields only
+        await prisma.vendorProfile.update({
+          where: { userId },
+          data: {
+            discomName:      (formData.get('discomName') as string)      || null,
+            discomAddress:   (formData.get('discomAddress') as string)   || null,
+            licenseeName:    (formData.get('licenseeName') as string)    || null,
+            licenseeAddress: (formData.get('licenseeAddress') as string) || null,
+          }
+        });
+        revalidatePath('/settings');
+        return { success: true };
+      } else {
+        return { success: false, error: 'Your company details are locked. Please contact the administrator to make changes.' };
+      }
     }
+
+    // Profile is NOT locked — save everything
+    const isLocking = actionType === 'lock';
 
     const data = {
       companyName: formData.get('companyName') as string,
@@ -39,12 +57,11 @@ export async function updateVendorProfile(formData: FormData) {
       phone: formData.get('phone') as string,
       gstin: formData.get('gstin') as string,
       address: formData.get('address') as string,
-      // DISCOM / Licensee (city-specific, optional)
       discomName:      (formData.get('discomName') as string)      || null,
       discomAddress:   (formData.get('discomAddress') as string)   || null,
       licenseeName:    (formData.get('licenseeName') as string)    || null,
       licenseeAddress: (formData.get('licenseeAddress') as string) || null,
-      isLocked: isLocking
+      isLocked: isLocking,
     };
 
     await prisma.vendorProfile.upsert({
