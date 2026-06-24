@@ -224,6 +224,23 @@ export async function POST(req: NextRequest) {
     // Resolve authenticated user (if any) to pull their VendorProfile
     const session = await getServerSession(authOptions);
     const sessionUserId = (session?.user as any)?.id as string | undefined;
+    const userName: string = (session?.user as any)?.name ?? '';
+    const userEmail: string = (session?.user as any)?.email ?? '';
+
+    if (sessionUserId) {
+      const TRIAL_END = new Date('2026-06-30T23:59:59+05:30');
+      const EXEMPT_USERS = ['munavvar'];
+      const isExempt = EXEMPT_USERS.some(u => 
+        userName.toLowerCase().includes(u.toLowerCase()) || 
+        userEmail.toLowerCase().includes(u.toLowerCase())
+      );
+      if (!isExempt && new Date() > TRIAL_END) {
+        return NextResponse.json(
+          { success: false, error: 'Your free trial has ended. Please subscribe at ₹200/month to continue generating documents. Contact admin via WhatsApp: +91 86052 03570' },
+          { status: 403 }
+        );
+      }
+    }
 
     const data = (await req.json()) as Record<string, unknown>;
     const missing = validatePayload(data);

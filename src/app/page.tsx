@@ -12,9 +12,13 @@ export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
   const userName: string = (session?.user as any)?.name ?? '';
+  const userEmail: string = (session?.user as any)?.email ?? '';
 
   const now = new Date();
-  const isTrialExempt = EXEMPT_USERS.some(u => userName.toLowerCase().includes(u.toLowerCase()));
+  const isTrialExempt = EXEMPT_USERS.some(u => 
+    userName.toLowerCase().includes(u.toLowerCase()) || 
+    userEmail.toLowerCase().includes(u.toLowerCase())
+  );
   const trialExpired = now > TRIAL_END;
   const daysLeft = Math.max(0, Math.ceil((TRIAL_END.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   const showTrialBanner = !isTrialExempt;
