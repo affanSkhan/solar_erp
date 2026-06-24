@@ -16,6 +16,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const userId = (session.user as any).id;
+    const userName: string = (session.user as any).name ?? '';
+
+    // ── Trial expiry gate ──
+    const TRIAL_END = new Date('2026-06-30T23:59:59+05:30');
+    const EXEMPT_USERS = ['munavvar'];
+    const isExempt = EXEMPT_USERS.some(u => userName.toLowerCase().includes(u.toLowerCase()));
+    if (!isExempt && new Date() > TRIAL_END) {
+      return NextResponse.json(
+        { success: false, error: 'Your free trial has ended. Please subscribe at ₹200/month to continue generating documents. Contact admin via WhatsApp: +91 86052 03570' },
+        { status: 403 }
+      );
+    }
 
     const data = (await req.json()) as Record<string, unknown>;
 

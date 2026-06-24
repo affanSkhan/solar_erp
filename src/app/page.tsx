@@ -5,9 +5,19 @@ import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
+const TRIAL_END = new Date('2026-06-30T23:59:59+05:30');
+const EXEMPT_USERS = ['munavvar'];
+
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
+  const userName: string = (session?.user as any)?.name ?? '';
+
+  const now = new Date();
+  const isTrialExempt = EXEMPT_USERS.some(u => userName.toLowerCase().includes(u.toLowerCase()));
+  const trialExpired = now > TRIAL_END;
+  const daysLeft = Math.max(0, Math.ceil((TRIAL_END.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const showTrialBanner = !isTrialExempt;
 
   let totalProjects = 0;
   let pendingApprovals = 0;
@@ -60,6 +70,62 @@ export default async function Dashboard() {
           Database is unavailable. Start PostgreSQL on{' '}
           <strong>localhost:5433</strong> to load live dashboard data.
         </div>
+      )}
+
+      {showTrialBanner && (
+        trialExpired ? (
+          <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 px-6 py-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-red-800 font-extrabold text-lg mb-1">⛔ Free Trial Ended</h2>
+                <p className="text-red-700 text-sm">
+                  Your free trial expired on <strong>30 June 2026</strong>. Document generation has been disabled.
+                  To continue using the service, please subscribe at <strong>₹200/month</strong>.
+                </p>
+              </div>
+              <a
+                href="https://wa.me/918605203570?text=Hi%2C%20I%20want%20to%20subscribe%20to%20Solar%20ERP%20at%20%E2%82%B9200%2Fmonth"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 bg-[#25D366] hover:bg-[#20bd5a] text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all duration-200 whitespace-nowrap"
+              >
+                Subscribe via WhatsApp
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className={`mb-8 rounded-2xl border px-6 py-5 shadow-sm ${
+            daysLeft <= 3
+              ? 'border-red-200 bg-red-50'
+              : daysLeft <= 7
+              ? 'border-orange-200 bg-orange-50'
+              : 'border-amber-200 bg-amber-50'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className={`font-extrabold text-lg mb-1 ${
+                  daysLeft <= 3 ? 'text-red-800' : daysLeft <= 7 ? 'text-orange-800' : 'text-amber-800'
+                }`}>
+                  {daysLeft <= 3 ? '⚠️' : '🔔'} Free Trial ending in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                </h2>
+                <p className={`text-sm ${
+                  daysLeft <= 3 ? 'text-red-700' : daysLeft <= 7 ? 'text-orange-700' : 'text-amber-700'
+                }`}>
+                  Your free trial ends on <strong>30 June 2026</strong>. After that, document generation will be disabled.
+                  Continue using the service for just <strong>₹200/month</strong> — contact admin to subscribe.
+                </p>
+              </div>
+              <a
+                href="https://wa.me/918605203570?text=Hi%2C%20I%20want%20to%20subscribe%20to%20Solar%20ERP%20at%20%E2%82%B9200%2Fmonth"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 bg-[#25D366] hover:bg-[#20bd5a] text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all duration-200 whitespace-nowrap"
+              >
+                Subscribe — ₹200/month
+              </a>
+            </div>
+          </div>
+        )
       )}
 
       {/* Stats Cards */}
